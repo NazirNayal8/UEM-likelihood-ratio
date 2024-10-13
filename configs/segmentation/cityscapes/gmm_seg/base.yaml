@@ -1,0 +1,67 @@
+MODEL:
+  BACKBONE:
+    NAME: DINOv2
+    VERSION: dinov2_vitl14_reg
+    FEATURES_TYPE: x_norm_patchtokens
+    INTERM_FEATURES: [1,11,16,23] # Should be either None or list of 4 levels where intermediate features are taken    
+    FREEZE: True
+    LEARNABLE_PARAMS:
+      TYPE: mlp
+      NUM_LAYERS: 2
+      HIDDEN_DIM: 512
+      OUTPUT_DIM: 512
+  SEGMENTATION_HEAD:
+    NAME: GMMSegHead
+    EMBEDDING_DIM: 1024 # this should match the output_dim of the backbone, consistency rule is added in the code
+    NUM_CLASSES: 19
+    NUM_COMPONENTS_PER_CLASS: 5
+    UPDATE_INTERVAL: 5
+    GAMMA_MEAN: 0.999
+    GAMMA_COV: 0
+    MEMORY_SIZE: 8000 # 32000
+    SINKHORN_FACTORS: [1,1,1]
+    MAX_SAMPLE_SIZE: 20 # maximum number of samples in memory per component
+    IGNORE_CLASS: 255
+    DISTRIBUTED_TRAINING: True
+  NUM_CLASSES: 19
+  IGNORE_INDEX: 255
+  LOSS:
+    NAME: gmm_seg
+    EPS: 1e-6
+    CONTRAST_LOSS_WEIGHT: 0.01
+
+SOLVER:
+  LR: 5.0e-4
+  OPTIMIZER: AdamW
+  WEIGHT_DECAY: 0.0
+  LR_SCHEDULER: 
+    NAME: PolyWithLinearWarmup
+    NUM_WARMUP_STEPS: 1500
+    LR_END: 1.0e-7
+    POWER: 1.0
+    LAST_EPOCH: -1
+  BATCH_SIZE: 2
+  PRECISION: 16
+  MAX_STEPS: 40000
+  LOG_EVERY_N_STEPS: 100
+  NUM_WORKERS: 12
+  VAL_CHECK_INTERVAL: 2000
+  EVAL_MODE: sliding_window
+  EVAL_WINDOW_SIZE: [518, 1036]
+  EVAL_STRIDE: [140, 140]
+DATA:
+  MODULE: SemanticSegmentation
+  NAME: cityscapes
+  DATASET_ROOT: '/scratch/users/nnayal21/hpc_run/datasets/cityscapes'
+  TARGET_TYPE: semantic_trainids
+  EVAL_DATASET: cityscapes
+
+CKPT:
+  DIR_PATH: ckpts/segmentation/
+
+WANDB:
+  ACTIVATE: True
+  RUN_NAME: GMMSeg
+  PROJECT: cityscapes_segmentation
+
+RANDOM_SEED: 2000

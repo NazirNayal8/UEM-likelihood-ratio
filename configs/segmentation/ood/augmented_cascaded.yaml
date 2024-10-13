@@ -1,0 +1,11 @@
+BASE_CONFIG: configs/segmentation/ood/base.yaml
+MODEL:
+  OOD_PROJECTOR:
+    TYPE: mlp_cascaded
+    INPUT_DIM: 1024
+    HIDDEN_DIM: 512
+    OUTPUT_DIM: 256
+    NUM_LAYERS: 3
+    NUM_SCALES: 4
+  OOD_HEAD:
+    NUM_CLASSES: 2

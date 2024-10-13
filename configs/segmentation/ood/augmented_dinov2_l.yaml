@@ -1,0 +1,22 @@
+BASE_CONFIG: configs/segmentation/ood/base.yaml
+MODEL:
+  SEGMENTOR_CKPT: null # path to the segmentation model checkpoint with dinov2
+  OOD_PROJECTOR:
+    TYPE: mlp
+    INPUT_DIM: 1024
+    HIDDEN_DIM: 512
+    OUTPUT_DIM: 256
+    NUM_LAYERS: 3
+  OOD_HEAD:
+    UPDATE_INTERVAL: 3
+    NUM_CLASSES: 2
+
+DATA:
+  OOD_PROB: 1.0
+  COCO_PROXY_SIZE: 30000
+
+SOLVER:
+  LR_SCHEDULER.NUM_WARMUP_STEPS: 0
+  MAX_STEPS: 4000
+  VAL_CHECK_INTERVAL: 50
+  LOG_EVERY_N_STEPS: 25

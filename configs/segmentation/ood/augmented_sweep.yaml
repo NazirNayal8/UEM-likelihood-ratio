@@ -1,0 +1,23 @@
+program: fintune_ood.py
+project: LR_OoD
+method: grid
+metric:
+  name: llr_AUPR
+  goal: maximize
+parameters:
+  MODEL:
+    parameters:
+      OOD_PROJECTOR:
+        parameters:
+          NUM_LAYERS:
+            values: [4, 6, 8]
+          HIDDEN_DIM:
+            values: [256, 512, 1024]
+      OOD_HEAD:
+        parameters:
+          NUM_COMPONENTS_PER_CLASS:
+            values: [5, 10, 20]
+          UPDATE_INTERVAL:
+            values: [3, 5, 7]
+          MEMORY_SIZE:
+            values: [8000, 16000]

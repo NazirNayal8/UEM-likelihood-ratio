@@ -1,0 +1,15 @@
+BASE_CONFIG: 'configs/segmentation/cityscapes/gmm_seg/base.yaml'
+MODEL:
+  BACKBONE:
+    VERSION: dinov2_vitb14_reg
+    LEARNABLE_PARAMS:
+      TYPE: conv_upsampling
+      NUM_PRE_LINEAR_LAYERS: 2
+      PRE_HIDDEN_DIM: 512
+      NUM_CONV_LAYERS: 2
+      CONV_HIDDEN_DIM: 512
+      NUM_POST_LINEAR_LAYERS: 2
+      POST_HIDDEN_DIM: 512
+      OUTPUT_DIM: 256
+WANDB:
+  RUN_NAME: GMM_seg_dinov2_b_convx4

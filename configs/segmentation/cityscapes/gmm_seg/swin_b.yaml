@@ -1,0 +1,29 @@
+BASE_CONFIG: 'configs/segmentation/cityscapes/gmm_seg/base.yaml'
+MODEL:
+  BACKBONE:
+    NAME: SwinTransformer
+    VERSION: swin_base_patch4_window7_224
+    PRETRAIN_IMG_SIZE: 384
+    PATCH_SIZE: 4
+    IN_CHANS: 3
+    EMBED_DIM: 128
+    DEPTHS: [2, 2, 18, 2]
+    NUM_HEADS: [4, 8, 16, 32]
+    WINDOW_SIZE: 12
+    MLP_RATIO: 4.0
+    QKV_BIAS: True
+    QK_SCALE: null
+    DROP_RATE: 0.0
+    ATTN_DROP_RATE: 0.0
+    DROP_PATH_RATE: 0.3
+    APE: False
+    PATCH_NORM: True
+    FROZEN_STAGES: -1
+    USE_CHECKPOINT: False
+    OUT_FEATURES: ["res2", "res3", "res4", "res5"]
+    PRETRAINED_CKPT: pretrained/swin_base_patch4_window12_384_22k.pth
+    LEARNABLE_PARAMS: 
+      NAME: FPN
+      IN_CHANNELS: [128, 256, 512, 1024] # this will be taken from the backbone in the code
+      OUTPUT_DIM: 256
+      FEATURE_NAMES: ["res2", "res3", "res4", "res5"]

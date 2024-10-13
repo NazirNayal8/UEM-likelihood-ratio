@@ -1,0 +1,11 @@
+BASE_CONFIG: 'configs/segmentation/cityscapes/gmm_seg/base.yaml'
+MODEL:
+  BACKBONE:
+    VERSION: dinov2_vitb14_reg
+    LEARNABLE_PARAMS:
+      TYPE: fpn
+      IN_CHANNELS: [768, 768, 768, 768] # This param is overwritten in the code because it can be computed from input and output channels but it will be left in case we want to control it later
+      OUTPUT_DIM: 256
+    INTERM_FEATURES: [1,4,8,11]
+WANDB:
+  RUN_NAME: GMM_seg_dinov2_b_fpn_1_4_8_11

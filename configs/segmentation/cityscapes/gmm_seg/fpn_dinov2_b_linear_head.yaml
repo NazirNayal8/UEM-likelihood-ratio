@@ -1,0 +1,8 @@
+BASE_CONFIG: 'configs/segmentation/cityscapes/gmm_seg/fpn_dinov2_b.yaml'
+MODEL:
+  SEGMENTATION_HEAD:
+    NAME: LinearHead
+    EMBEDDING_DIM: 1024
+    NUM_CLASSES: 19
+  LOSS:
+    NAME: sem_seg  

@@ -1,0 +1,65 @@
+MODEL:
+  SEGMENTOR_CKPT: 'ckpts/segmentation/cityscapes/GMM_seg_dinov2_b_fpn_1_4_8_11_bs2-bf16-mixed/epoch=258-val_iou=0.81.ckpt'
+  BACKBONE:
+    NAME: DINOv2
+  OOD_HEAD:
+    NAME: GMMSegHead
+    EMBEDDING_DIM: 1024 # this should match the output_dim of the backbone, consistency rule is added in the code
+    NUM_CLASSES: 1
+    NUM_COMPONENTS_PER_CLASS: 5
+    UPDATE_INTERVAL: 3
+    GAMMA_MEAN: 0.999
+    GAMMA_COV: 0
+    MEMORY_SIZE: 8000 # 32000
+    SINKHORN_FACTORS: [1,1,1]
+    MAX_SAMPLE_SIZE: 20 # maximum number of samples in memory per component
+    IGNORE_CLASS: 255
+    DISTRIBUTED_TRAINING: True
+  IGNORE_INDEX: 255
+  LOSS:
+    NAME: likelihood_ratio
+    GMM_LOSS_WEIGHT: 0.0
+    EPS: 1e-6
+    CONTRAST_LOSS_WEIGHT: 0.01
+  
+SOLVER:
+  LR: 5.0e-4
+  OPTIMIZER: AdamW
+  WEIGHT_DECAY: 0.0
+  LR_SCHEDULER: 
+    NAME: PolyWithLinearWarmup
+    NUM_WARMUP_STEPS: 1500
+    LR_END: 1.0e-7
+    POWER: 1.0
+    LAST_EPOCH: -1
+  BATCH_SIZE: 2
+  PRECISION: bf16-mixed
+  MAX_STEPS: 4000
+  LOG_EVERY_N_STEPS: 100
+  NUM_WORKERS: 5
+  VAL_CHECK_INTERVAL: 500
+  EVAL_MODE: sliding_window
+  EVAL_WINDOW_SIZE: [518, 1036]
+  EVAL_STRIDE: [140, 140]
+
+DATA:
+  MODULE: SemanticSegmentation
+  NAME: cityscapes_ood
+  DATASET_ROOT: '/scratch/users/nnayal21/hpc_run/datasets/cityscapes'
+  DATASETS_FOLDER: '/scratch/users/nnayal21/hpc_run/datasets/'
+  TARGET_TYPE: semantic_trainids
+  EVAL_DATASET: road_anomaly
+  OOD_LABEL: 254
+  OOD_PROB: 0.2
+  COCO_ROOT: /scratch/users/nnayal21/hpc_run/datasets/coco
+  COCO_PROXY_SIZE: 30000
+
+CKPT:
+  DIR_PATH: ckpts/ood_segmentation/
+
+WANDB:
+  ACTIVATE: True
+  RUN_NAME: gmmseg_ood_head
+  PROJECT: LR_OoD
+
+RANDOM_SEED: 2000
