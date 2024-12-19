@@ -20,17 +20,9 @@ from .misc import (
 from .maskformer import MaskHead
 
 
-from .vq_vae import VQVAE
-from .pixel_cnn import GatedPixelCNN
-from .mingpt_adapted import GPT
-
-
 from easydict import EasyDict as edict
 
 MODELS = edict(
-    VQ_VAE=VQVAE,
-    PixelCNN=GatedPixelCNN,
-    GPT=GPT,
     DINOv2=DINOv2,
     GMMSegHead=GMMSegHead,
     SwinTransformer=SwinTransformer,
