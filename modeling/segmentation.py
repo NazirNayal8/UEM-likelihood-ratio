@@ -9,8 +9,6 @@ from .losses.mask2former import Mask2FormerLoss
 from easydict import EasyDict as edict
 
 
-
-
 class SegmentationModel(pl.LightningModule):
 
     def __init__(self, config):
@@ -32,13 +30,13 @@ class SegmentationModel(pl.LightningModule):
 
         if self.hparams.MODEL.LOSS.NAME == "maskformer":
 
-            self.criterion = create_model(self.hparams.MODEL.LOSS, edict(maskformer=Mask2FormerLoss))
+            self.criterion = create_model(
+                self.hparams.MODEL.LOSS, edict(maskformer=Mask2FormerLoss))
             new_weight_dict = edict(self.hparams.MODEL.LOSS.WEIGHT_DICT.copy())
             for i in range(self.hparams.MODEL.BACKBONE.LEARNABLE_PARAMS.TRANSFORMER_PREDICTOR_CONFIG.DEC_LAYERS):
-                for k,v in self.hparams.MODEL.LOSS.WEIGHT_DICT.items():
+                for k, v in self.hparams.MODEL.LOSS.WEIGHT_DICT.items():
                     new_weight_dict.update({f"{k}_{i}": v})
-            self.criterion.weight_dict = new_weight_dict 
-
+            self.criterion.weight_dict = new_weight_dict
 
     @classmethod
     def distributed_consistency(self, config, args):
@@ -55,10 +53,10 @@ class SegmentationModel(pl.LightningModule):
     @classmethod
     def embedding_dim_consistency(self, config, args):
 
-    # make sure embedding dim given from backbone is same as expected in
-    # the segmentation head
+        # make sure embedding dim given from backbone is same as expected in
+        # the segmentation head
         if config.MODEL.BACKBONE.LEARNABLE_PARAMS is not None:
-            
+
             config.MODEL.SEGMENTATION_HEAD.EMBEDDING_DIM = (
                 config.MODEL.BACKBONE.LEARNABLE_PARAMS.OUTPUT_DIM
             )
@@ -66,14 +64,14 @@ class SegmentationModel(pl.LightningModule):
             config.MODEL.SEGMENTATION_HEAD.EMBEDDING_DIM = config.MODEL.BACKBONE.EMBED_DIM
 
         return config
-    
+
     @classmethod
     def feature_names_consistency(self, config, args):
         """
         Ensure the feature names are consistent in non-DinoV2 models between
         the backbone output and the learnabler layers (decoder)
         """
-        
+
         if config.MODEL.BACKBONE.NAME != "DINOv2":
             config.MODEL.BACKBONE.LEARNABLE_PARAMS.FEATURE_NAMES = config.MODEL.BACKBONE.OUT_FEATURES
 
@@ -138,7 +136,7 @@ class SegmentationModel(pl.LightningModule):
         )
 
         return total_loss
-    
+
     def sem_seg_loss(self, outputs, targets):
 
         sem_seg = outputs.sem_seg
@@ -147,23 +145,24 @@ class SegmentationModel(pl.LightningModule):
         )
 
         return sem_seg_loss
-    
+
     def maskformer_loss(self, output, targets):
-        
+
         losses = self.criterion(output, targets)
-        
+
         total_loss = None
         for name, loss in losses.items():
             if name in self.criterion.weight_dict:
                 if total_loss is None:
                     total_loss = loss * self.criterion.weight_dict[name]
                 else:
-                    total_loss = total_loss + loss * self.criterion.weight_dict[name]
+                    total_loss = total_loss + loss * \
+                        self.criterion.weight_dict[name]
 
-                self.log(f"m2f_losses/{name}", loss.detach(), on_epoch=True, on_step=True)
+                self.log(f"m2f_losses/{name}", loss.detach(),
+                         on_epoch=True, on_step=True)
 
         return total_loss
-
 
     def loss_function(self, outputs, targets):
 
@@ -210,7 +209,7 @@ class SegmentationModel(pl.LightningModule):
 
         B, H, W = y.shape
         if output_sem_seg.size(2) != H or output_sem_seg.size(3) != W:
-            
+
             output_sem_seg = F.interpolate(
                 output_sem_seg, size=(H, W), mode="bilinear", align_corners=False
             )
@@ -271,19 +270,18 @@ class SegmentationModel(pl.LightningModule):
             w_loop.append((W - window_w, W))
         for i, i_end in h_loop:
             for j, j_end in w_loop:
-                x_window = x[:, :, i : i_end, j : j_end]
+                x_window = x[:, :, i: i_end, j: j_end]
                 output_sem_seg_window = self(x_window)
                 output_sem_seg[
-                    :, :, i : i_end, j : j_end
+                    :, :, i: i_end, j: j_end
                 ] += F.interpolate(
                     output_sem_seg_window.sem_seg,
                     size=(window_h, window_w),
                     mode="bilinear",
                     align_corners=False,
                 )
-                counter[:, i : i_end, j : j_end] += 1        
-    
+                counter[:, i: i_end, j: j_end] += 1
+
         output_sem_seg /= counter.unsqueeze(1)
 
         return output_sem_seg
-

@@ -1,4 +1,4 @@
-BASE_CONFIG: 'configs/segmentation/cityscapes/gmm_seg/fpn_dinov2_b.yaml'
+BASE_CONFIG: 'configs/segmentation/cityscapes/gmm.yaml'
 MODEL:
   SEGMENTATION_HEAD:
     NAME: LinearHead

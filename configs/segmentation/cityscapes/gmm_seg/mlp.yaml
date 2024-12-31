@@ -1,8 +1,0 @@
-BASE_CONFIG: 'configs/segmentation/cityscapes/gmm_seg/base.yaml'
-MODEL:
-  BACKBONE:
-    LEARNABLE_PARAMS:
-      TYPE: mlp
-      NUM_LAYERS: 3
-      HIDDEN_DIM: 512
-      OUTPUT_DIM: 256

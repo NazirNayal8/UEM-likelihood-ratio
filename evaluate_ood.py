@@ -1,19 +1,9 @@
 import os
 import argparse
-import torch
-import numpy as np
-import albumentations as A
-from albumentations.pytorch import ToTensorV2
 
 from modeling.ood_segmentation import OoDSegmentationModel
 from easydict import EasyDict as edict
-from datamodules.datasets.road_anomaly import RoadAnomaly
-from datamodules.datasets.fishyscapes import FishyscapesLAF
-from torch.utils.data import DataLoader
-from tqdm import tqdm
 
-from torchmetrics import AUROC, AveragePrecision
-from modeling.modules.metrics import FPR95
 from tools import overwrite_config
 from pytorch_lightning import Trainer
 from datamodules import SemanticSegmentationDataModule
@@ -26,42 +16,25 @@ def evaluate_single_ckpt(ckpt, args, opts):
     are the values.
     """
     print(f"Evaluating {ckpt}")
-    
-    model = OoDSegmentationModel.load_from_checkpoint(ckpt)
+
+    segmentor_ckpt = None
+    if args.segmentor_ckpt is not None:
+        segmentor_ckpt = args.segmentor_ckpt
+
+    model = OoDSegmentationModel.load_from_checkpoint(
+        ckpt, segmentor_ckpt=segmentor_ckpt)
 
     model.save_hyperparameters(overwrite_config(model.hparams, opts))
-    
+
     datamodule = SemanticSegmentationDataModule(model.hparams)
     devices = 1
     if args.devices is not None:
         devices = [int(d) for d in args.devices.split(",")]
-    output = Trainer(precision='32', devices=devices).test(model, datamodule=datamodule)
+    output = Trainer(precision='32', devices=devices).test(
+        model, datamodule=datamodule)
 
     return edict(output[0])
 
-def evaluate_multiple_ckpts(args):
-
-    opts = [
-        "DATA.DATASETS_FOLDER", args.datasets_folder
-    ]
-
-    if args.multiple_datasets:
-        datasets = args.dataset.split(",")
-    else:
-        datasets = [args.dataset]
-
-    ckpts = os.listdir(args.models_folder)
-    results = edict()
-    for ckpt in ckpts:
-        results[ckpt] = edict()
-        for dataset in datasets:
-            results[ckpt][dataset] = evaluate_single_ckpt(
-                ckpt=os.path.join(args.models_folder, ckpt), 
-                args=args,
-                opts=opts + ["DATA.EVAL_DATASET", dataset],
-            )
-
-    return results
 
 def write_results(results, args):
     """
@@ -75,12 +48,10 @@ def write_results(results, args):
         # if args.out_path doesn't exist create it
         if not os.path.exists(args.out_path):
             os.makedirs(args.out_path, exist_ok=True)
-        if args.multiple_models:
-            out_path = os.path.join(args.models_folder, "all_results")
-        else:
-            model_folder = '/'.join(args.ckpt.split("/")[:-1])
-            model_name = args.ckpt.split("/")[-1].split(".")[0]
-            out_path = os.path.join(model_folder, model_name + "_results")
+    
+        model_folder = '/'.join(args.ckpt.split("/")[:-1])
+        model_name = args.ckpt.split("/")[-1].split(".")[0]
+        out_path = os.path.join(model_folder, model_name + "_results")
 
         # in the first row of the output, leave the first column empty for the checkpoint name
         # and print the metrics in the order given in the argument
@@ -98,28 +69,28 @@ def write_results(results, args):
                         f.write(f"{100 * dataset_results[metric]:.4f}\t")
                 f.write("\n")
 
+
 def main(args):
 
-    
-    
-    if args.multiple_models:
-        results = evaluate_multiple_ckpts(args)
+    if args.multiple_datasets:
+        datasets = args.dataset.split(",")
     else:
-        if args.multiple_datasets:
-            datasets = args.dataset.split(",")
-        else:
-            datasets = [args.dataset]
-        
-        results = edict()
-        ckpt_name = args.ckpt.split("/")[-1]
-        results[ckpt_name] = edict()
-        opts = ["DATA.DATASETS_FOLDER", args.datasets_folder]
-        for dataset in datasets:
-            results[ckpt_name][dataset] = evaluate_single_ckpt(
-                args.ckpt,
-                args, 
-                opts + ["DATA.EVAL_DATASET", dataset]
-            )
+        datasets = [args.dataset]
+
+    results = edict()
+    ckpt_name = args.ckpt.split("/")[-1]
+    results[ckpt_name] = edict()
+    opts = ["DATA.DATASETS_FOLDER", args.datasets_folder]
+
+    if args.segmentor_ckpt is not None:
+        opts.extend(["MODEL.SEGMENTOR_CKPT", args.segmentor_ckpt])
+
+    for dataset in datasets:
+        results[ckpt_name][dataset] = evaluate_single_ckpt(
+            args.ckpt,
+            args,
+            opts + ["DATA.EVAL_DATASET", dataset]
+        )
 
     write_results(results, args)
 
@@ -133,6 +104,12 @@ if __name__ == "__main__":
         help="Path to the model checkpoint"
     )
     parser.add_argument(
+        "--segmentor-ckpt",
+        type=str,
+        default=None,
+        help="Path to the segmentation model checkpoint, if none then use the checkpoint stored in the model config"
+    )
+    parser.add_argument(
         "--dataset",
         type=str,
         default="road_anomaly",
@@ -142,17 +119,6 @@ if __name__ == "__main__":
         "--multiple-datasets",
         action="store_true",
         help="Evaluate multiple datasets, names given separated by commas in --dataset argument"
-    )
-    parser.add_argument(
-        "--multiple-models", 
-        action="store_true",
-        help="Evaluate multiple checkpoints given in the --models-folder argument"
-    )
-    parser.add_argument(
-        "--models-folder",
-        type=str,
-        default=None,
-        help="Path to the folder containing multiple models"
     )
     parser.add_argument(
         "--batch-size",

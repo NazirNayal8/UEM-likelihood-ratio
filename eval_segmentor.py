@@ -8,7 +8,6 @@ from pytorch_lightning import Trainer
 from tools import overwrite_config
 
 SEGMENTATION_DATASETS = ["cityscapes"]
-OOD_DATASETS = [] # unsupported yet
 
 
 def get_datamodule(args, hparams):
@@ -23,7 +22,7 @@ def get_datamodule(args, hparams):
 
 
 def main(args):
-    
+
     # load config from ckpt
     ckpt = torch.load(args.ckpt)
     hparams = edict(ckpt["hyper_parameters"])
@@ -33,7 +32,7 @@ def main(args):
 
     hparams = overwrite_config(hparams, args.opts)
 
-    # load datamodule    
+    # load datamodule
 
     datamodule = get_datamodule(args, hparams)
 
@@ -46,7 +45,8 @@ def main(args):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Evaluate a segmentation model")
+    parser = argparse.ArgumentParser(
+        description="Evaluate a segmentation model")
     parser.add_argument(
         "--ckpt",
         type=str,
@@ -59,16 +59,16 @@ if __name__ == "__main__":
         help="Name of evaluation dataset"
     )
     parser.add_argument(
-        "--devices", 
+        "--devices",
         type=str,
         default=None,
         help="Devices to run the evaluation on"
     )
 
     parser.add_argument(
-        "opts", 
-        default=None, 
-        nargs=argparse.REMAINDER, 
+        "opts",
+        default=None,
+        nargs=argparse.REMAINDER,
         help="Modify config options using the command-line"
     )
 

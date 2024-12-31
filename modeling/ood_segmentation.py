@@ -1,8 +1,6 @@
 import pytorch_lightning as pl
-import numpy as np
 import torch
 import torch.nn.functional as F
-import warnings
 from torch import optim
 from .segmentation import SegmentationModel
 from .modules import (
@@ -23,14 +21,18 @@ from .schedulers.poly import get_polynomial_decay_schedule_with_warmup
 
 class OoDSegmentationModel(pl.LightningModule):
 
-    def __init__(self, config):
+    def __init__(self, config, segmentor_ckpt=None):
         super().__init__()
 
         self.save_hyperparameters(config)
 
-        self.segmentor = SegmentationModel.load_from_checkpoint(
-            self.hparams.MODEL.SEGMENTOR_CKPT
-        )
+        if segmentor_ckpt is None:
+            self.segmentor = SegmentationModel.load_from_checkpoint(
+                self.hparams.MODEL.SEGMENTOR_CKPT
+            )
+        else:
+            self.segmentor = SegmentationModel.load_from_checkpoint(
+                segmentor_ckpt)
         for param in self.segmentor.parameters():
             param.requires_grad = False
 
@@ -163,7 +165,8 @@ class OoDSegmentationModel(pl.LightningModule):
 
         result = edict()
 
-        features, dino_features = self.segmentor.backbone(x, return_dino_features=True)
+        features, dino_features = self.segmentor.backbone(
+            x, return_dino_features=True)
 
         if return_seg:
             seg_out = self.segmentor.segmentation_head(features)
@@ -241,41 +244,6 @@ class OoDSegmentationModel(pl.LightningModule):
 
         return optimizer
 
-    def linear_lr_loss(self, outputs, targets):
-
-        lr_score = (
-            (outputs.ood_score[:, 1])
-            - outputs.sem_seg.max(dim=1)[0]
-            - (outputs.ood_score[:, 0])
-        )
-        # NOTE: orig
-        # mask = targets != self.hparams.MODEL.IGNORE_INDEX
-        # lr_loss = F.binary_cross_entropy_with_logits(
-        #     lr_score[mask], targets[mask].float()
-        # )
-        
-        lr_loss = F.cross_entropy(
-            torch.cat([
-                outputs.ood_score[:, 0].unsqueeze(1) + outputs.sem_seg.max(dim=1)[0].unsqueeze(1),
-                outputs.ood_score[:, 1].unsqueeze(1), 
-                ], dim=1), 
-                targets.long(), 
-                ignore_index=self.hparams.MODEL.IGNORE_INDEX
-            )
-        # mask = targets != self.hparams.MODEL.IGNORE_INDEX
-        # lr_loss = F.binary_cross_entropy_with_logits(
-        #     lr_score[mask], targets[mask].float()
-        # )
-
-        gmm_loss = F.cross_entropy(
-            outputs.ood_score,
-            targets.long(),
-            ignore_index=self.hparams.MODEL.IGNORE_INDEX,
-        )
-        lr_loss = lr_loss + self.hparams.MODEL.LOSS.GMM_LOSS_WEIGHT * gmm_loss
-
-        return lr_loss
-
     def likelihood_ratio_loss(self, outputs, targets):
         """
         Inputs:
@@ -298,31 +266,32 @@ class OoDSegmentationModel(pl.LightningModule):
 
         """
 
-        # LLR = log(p(x|ood)) - log(p(x|inlier)) - maxlogit(segmentor) 
+        # LLR = log(p(x|ood)) - log(p(x|inlier)) - maxlogit(segmentor)
         lr_score = (
             outputs.ood_score[:, 1]
             - outputs.sem_seg.max(dim=1)[0]
             - outputs.ood_score[:, 0]
-        ) 
+        )
 
         mask = targets != self.hparams.MODEL.IGNORE_INDEX
 
         lr_loss = F.binary_cross_entropy_with_logits(
             lr_score[mask], targets[mask].float()
         )
-        # NOTE: LOSS_2
+
+        # GMM loss for when the GMM loss is used. Controlled by a weight parameter
         gmm_loss = F.cross_entropy(
             outputs.ood_score,
             targets.long(),
             ignore_index=self.hparams.MODEL.IGNORE_INDEX,
         )
-    
+
         lr_loss = lr_loss + self.hparams.MODEL.LOSS.GMM_LOSS_WEIGHT * gmm_loss
 
         total_loss = lr_loss
 
         # NOTE: not all segmentation heads have contrast logits, therefore compute it
-        # only if it is present
+        # only if it is present. This is also related to the GMM loss
         if "contrast_logits" in outputs:
             contrast_loss = F.cross_entropy(
                 outputs.contrast_logits,
@@ -351,8 +320,6 @@ class OoDSegmentationModel(pl.LightningModule):
 
         if self.hparams.MODEL.LOSS.NAME == "likelihood_ratio":
             return self.likelihood_ratio_loss(outputs, targets)
-        elif self.hparams.MODEL.LOSS.NAME == "linear_lr":
-            return self.linear_lr_loss(outputs, targets)
         else:
             raise NotImplementedError(
                 f"Given loss not supported: {self.hparams.MODEL.LOSS.NAME}"
@@ -376,18 +343,15 @@ class OoDSegmentationModel(pl.LightningModule):
                 outputs.ood_score, size=(H, W), mode="bilinear", align_corners=False
             )
 
-        # now set OoD to 1, and inlier to 0, and keep IGNORE_INDEX
-        # ood_mask = (ood_mask == 0).float()
-        # ood_mask[y == self.hparams.MODEL.IGNORE_INDEX] = self.hparams.MODEL.IGNORE_INDEX
-
         loss = self.loss_function(outputs, ood_mask)
 
         self.log("train/loss", loss.item(), on_epoch=True, on_step=True)
 
-        # NOTE: this is used to minutor GMM components learning only
+        # NOTE: this is used to monitor GMM components learning only
         if self.hparams.MODEL.OOD_HEAD.NAME == "GMMSegHead":
             # extract the norms of the gaussian components of ood_head and log them
-            means = self.ood_head.means  # (num_classes, num_components, embedding_dim)
+            # (num_classes, num_components, embedding_dim)
+            means = self.ood_head.means
 
             # compute the average pairwise distance between num_components
             # of each class
@@ -407,7 +371,7 @@ class OoDSegmentationModel(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx, dataloader_idx=0):
         """
-        NOTE: for now evaluation is either OoD or inlier, both will be added later
+        NOTE: for now evaluation is either OoD or inlier
         """
         x, y = batch
 
@@ -436,10 +400,6 @@ class OoDSegmentationModel(pl.LightningModule):
 
             ood_score = output.ood_score[:, 1]
             idd_score_under_ood = output.ood_score[:, 0]
-            
-            # if self.hparams.MODEL.LOSS == "linear_lr":
-            #     ood_score = F.logsigmoid(ood_score)
-            #     idd_score_under_ood = F.logsigmoid(idd_score_under_ood)
 
             idd_score = output.sem_seg.max(dim=1)[0]
             lr_score = ood_score - idd_score - idd_score_under_ood
@@ -470,7 +430,7 @@ class OoDSegmentationModel(pl.LightningModule):
                     metric.reset()
 
     def test_step(self, batch, batch_idx):
-        
+
         x, y = batch
 
         output = self.sliding_window_inference(
@@ -484,10 +444,6 @@ class OoDSegmentationModel(pl.LightningModule):
 
         ood_score = output.ood_score[:, 1]
         idd_score_under_ood = output.ood_score[:, 0]
-        
-        # if self.hparams.MODEL.LOSS == "linear_lr":
-        #     ood_score = F.logsigmoid(ood_score)
-        #     idd_score_under_ood = F.logsigmoid(idd_score_under_ood)
 
         idd_score = output.sem_seg.max(dim=1)[0]
         lr_score = ood_score - idd_score - idd_score_under_ood
@@ -497,7 +453,7 @@ class OoDSegmentationModel(pl.LightningModule):
         self.ood_metrics_llr.update(lr_score, y)
 
     def on_test_epoch_end(self) -> None:
-        
+
         for metric in [
             self.ood_metrics_idd,
             self.ood_metrics_ood,

@@ -1,9 +1,0 @@
-BASE_CONFIG: configs/segmentation/ood/augmented.yaml
-
-DATA:
-  NAME: cityscapes_mapillary_ood
-  MAPILLARY_ROOT: /scratch/users/nnayal21/hpc_run/datasets/mapillary_vistas
-  MAPILLARY_MODE: train
-
-WANDB:
-  RUN_NAME: augmented_map

@@ -1,0 +1,9 @@
+BASE_CONFIG: 'configs/segmentation/cityscapes/base.yaml'
+MODEL:
+  BACKBONE:
+    VERSION: dinov2_vitb14_reg
+    LEARNABLE_PARAMS:
+      TYPE: fpn
+      IN_CHANNELS: [768, 768, 768, 768] # This param is overwritten in the code because it can be computed from input and output channels 
+      OUTPUT_DIM: 256
+    INTERM_FEATURES: [1,4,8,11]

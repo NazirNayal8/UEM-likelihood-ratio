@@ -17,6 +17,68 @@ class SemanticSegmentationDataModule(pl.LightningDataModule):
 
     def setup(self, stage=None):
 
+        if stage in ["val", "test"]:
+
+            transformations = self.get_transformations()
+            if "EVAL_DATASET" not in self.config.DATA or self.config.DATA.EVAL_DATASET == "cityscapes":
+                from .datasets.cityscapes import Cityscapes
+                self.valid_dataset = Cityscapes(
+                    hparams=self.config.DATA,
+                    transform=transformations.cityscapes_val,
+                    split="val",
+                )
+            elif self.config.DATA.EVAL_DATASET == "road_anomaly":
+                from .datasets.road_anomaly import RoadAnomaly
+
+                hparams = edict(
+                    dataset_root=os.path.join(
+                        self.config.DATA.DATASETS_FOLDER,
+                        "RoadAnomaly/RoadAnomaly_jpg",
+                    )
+                )
+                self.valid_dataset = RoadAnomaly(
+                    hparams=hparams,
+                    transforms=transformations.road_anomaly,
+                )
+            elif self.config.DATA.EVAL_DATASET == "fishyscapes_laf":
+                from .datasets.fishyscapes import FishyscapesLAF
+
+                hparams = edict(
+                    dataset_root=os.path.join(
+                        self.config.DATA.DATASETS_FOLDER, "Fishyscapes"
+                    )
+                )
+                self.valid_dataset = FishyscapesLAF(
+                    hparams=hparams,
+                    transforms=transformations.road_anomaly,
+                )
+            elif self.config.DATA.EVAL_DATASET == "ra_and_fslaf":
+                from .datasets.road_anomaly import RoadAnomaly
+
+                hparams = edict(
+                    dataset_root=os.path.join(
+                        self.config.DATA.DATASETS_FOLDER,
+                        "RoadAnomaly/RoadAnomaly_jpg",
+                    )
+                )
+                self.valid_dataset_1 = RoadAnomaly(
+                    hparams=hparams,
+                    transforms=transformations.road_anomaly,
+                )
+                from .datasets.fishyscapes import FishyscapesLAF
+
+                hparams = edict(
+                    dataset_root=os.path.join(
+                        self.config.DATA.DATASETS_FOLDER, "Fishyscapes"
+                    )
+                )
+                self.valid_dataset_2 = FishyscapesLAF(
+                    hparams=hparams,
+                    transforms=transformations.road_anomaly,
+                )
+
+            return
+
         if "cityscapes" in self.config.DATA.NAME:
             from .datasets.cityscapes import (
                 Cityscapes,
@@ -51,7 +113,8 @@ class SemanticSegmentationDataModule(pl.LightningDataModule):
                         mapillary_mode="train",
                     )
                 else:
-                    raise ValueError(f"Undefined Dataset: {self.config.DATA.NAME}")
+                    raise ValueError(
+                        f"Undefined Dataset: {self.config.DATA.NAME}")
 
                 # NOTE: In the current version, we either use cityscapes (inlier) or Road Anomaly (outlier) dataset for validation
                 if self.config.DATA.EVAL_DATASET == "cityscapes":
@@ -136,9 +199,9 @@ class SemanticSegmentationDataModule(pl.LightningDataModule):
         )
 
     def val_dataloader(self):
-        
-        if self.config.DATA.EVAL_DATASET == "ra_and_fslaf":
-            
+
+        if "EVAL_DATASET" in self.config.DATA and self.config.DATA.EVAL_DATASET == "ra_and_fslaf":
+
             return [
                 DataLoader(
                     self.valid_dataset_1,
@@ -196,7 +259,8 @@ class SemanticSegmentationDataModule(pl.LightningDataModule):
                     ),
                     A.HorizontalFlip(p=0.5),
                     A.ColorJitter(),
-                    A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
+                    A.Normalize(mean=(0.485, 0.456, 0.406),
+                                std=(0.229, 0.224, 0.225)),
                     ToTensorV2(),
                 ]
             ),
@@ -222,7 +286,8 @@ class SemanticSegmentationDataModule(pl.LightningDataModule):
                     ),
                     A.HorizontalFlip(p=0.5),
                     A.ColorJitter(),
-                    A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
+                    A.Normalize(mean=(0.485, 0.456, 0.406),
+                                std=(0.229, 0.224, 0.225)),
                     ToTensorV2(),
                 ]
             ),
@@ -235,13 +300,15 @@ class SemanticSegmentationDataModule(pl.LightningDataModule):
                         p=1.0,
                         mask_value=self.config.MODEL.IGNORE_INDEX,
                     ),
-                    A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
+                    A.Normalize(mean=(0.485, 0.456, 0.406),
+                                std=(0.229, 0.224, 0.225)),
                     ToTensorV2(),
                 ]
             ),
             road_anomaly=A.Compose(
                 [
-                    A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
+                    A.Normalize(mean=(0.485, 0.456, 0.406),
+                                std=(0.229, 0.224, 0.225)),
                     ToTensorV2(),
                 ]
             ),

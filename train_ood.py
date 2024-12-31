@@ -1,6 +1,7 @@
 import os
 import argparse
 import torch
+
 from pytorch_lightning.loggers.wandb import WandbLogger
 from pytorch_lightning import seed_everything, Trainer
 from pytorch_lightning.callbacks import (
@@ -19,7 +20,7 @@ from tools import (
 )
 from pprint import pprint
 
-from modeling.segmentation import SegmentationModel
+from modeling.ood_segmentation import OoDSegmentationModel
 from datamodules import DATAMODULES
 from torchinfo import summary
 
@@ -27,12 +28,14 @@ from torchinfo import summary
 def create_run_name(config, args):
 
     name = config.WANDB.RUN_NAME
-    # name += f"_B:{config.MODEL.BACKBONE.NAME}"
-    # name += f"_SH:{config.MODEL.SEGMENTATION_HEAD.NAME}"
     name += f"_{args.name_suffix}"
+    name += f"_nc{config.MODEL.OOD_HEAD.NUM_COMPONENTS_PER_CLASS}"
+    name += f"_ui{config.MODEL.OOD_HEAD.UPDATE_INTERVAL}"
+    name += f"_memsz{config.MODEL.OOD_HEAD.MEMORY_SIZE}"
+    name += f"_projnl{config.MODEL.OOD_PROJECTOR.NUM_LAYERS}"
+    name += f"_projhd{config.MODEL.OOD_PROJECTOR.HIDDEN_DIM}"
 
     return name
-
 
 
 def main(args):
@@ -40,17 +43,19 @@ def main(args):
     torch.set_float32_matmul_precision("high")
 
     # read config
-    config = edict(read_config_recursive(args.filename))
+    if args.filename[-4:] == "ckpt":
+        config = edict(torch.load(args.filename)["hyper_parameters"])
+    else:
+        config = edict(read_config_recursive(args.filename))
 
     # overwrite config with opts from args, each argument can be a string
     config = overwrite_config(config, args.opts)
 
     # make sure config parameters are consistent. Consistency rules are manually defined.
-    config = SegmentationModel.apply_consistency(config, args)
+    config = OoDSegmentationModel.apply_consistency(config, args)
     pprint(config)
 
     config.WANDB.RUN_NAME = create_run_name(config, args)
-
     # prepare logger
     if config.WANDB.ACTIVATE and not args.dev:
         logger = WandbLogger(
@@ -65,7 +70,7 @@ def main(args):
     # given by the wandb agent
     if args.sweep_config is not None:
         config = update_from_wandb(config, edict(logger.experiment.config))
-    
+
     limit_val_batches = 1.0
     if args.profile_memory:
         torch.cuda.memory._record_memory_history(max_entries=100000)
@@ -74,7 +79,8 @@ def main(args):
 
     # for reproducibility
     seed_everything(config.RANDOM_SEED, workers=True)
-    model = SegmentationModel(config)
+
+    model = OoDSegmentationModel(config)
 
     if args.summary:
         print(summary(model, input_size=(1, 3, 518, 1036), device="cuda"))
@@ -90,16 +96,23 @@ def main(args):
         ModelCheckpoint(
             save_top_k=1,
             dirpath=ckpt_path,
-            monitor="val_iou",
+            monitor="llr_AUPR",
             mode="max",
-            filename="{epoch:02d}-{val_iou:.2f}",
+            filename="{step:02d}-{llr_AUPR:.4f}",
             save_last=True,
+        ),
+        ModelCheckpoint(
+            save_top_k=1,
+            dirpath=ckpt_path,
+            monitor="llr_FPR95",
+            mode="min",
+            filename="{step:02d}-{llr_FPR95:.4f}",
+            save_last=False,
         ),
     ]
 
     strategy = "auto"
     devices = 1
-
     if args.distributed:
         devices = -1
         if args.multi_gpu_ids is not None:
@@ -109,13 +122,12 @@ def main(args):
     elif args.choose_gpu is not None:
         devices = [args.choose_gpu]
 
-
     # train
     trainer = Trainer(
         fast_dev_run=args.dev,
         accelerator="gpu",
         devices=devices,
-        strategy=strategy, # ddp_find_unused_parameters_true
+        strategy=strategy,  # ddp_find_unused_parameters_true
         log_every_n_steps=config.SOLVER.LOG_EVERY_N_STEPS,
         max_steps=config.SOLVER.MAX_STEPS,
         logger=logger,
@@ -132,7 +144,7 @@ def main(args):
         resume_path = os.path.join(ckpt_path, "last.ckpt")
         if not os.path.exists(resume_path):
             resume_path = None
-            
+
     trainer.fit(model, datamodule=datamodule, ckpt_path=resume_path)
 
     if args.profile_memory:
@@ -150,7 +162,8 @@ def main(args):
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser(description="Trainer for GMM Likelihood Ratio")
+    parser = argparse.ArgumentParser(description="Finetuning OoD GMM Head")
+
     parser.add_argument(
         "--config",
         "-c",
@@ -168,7 +181,8 @@ if __name__ == "__main__":
         help="Sweep Config Path. If None don't run sweep, otherwise, run sweep.",
     )
 
-    parser.add_argument("--choose-gpu", type=int, default=None, help="Choose GPU")
+    parser.add_argument("--choose-gpu", type=int,
+                        default=None, help="Choose GPU")
     parser.add_argument(
         "--name-suffix", type=str, default="", help="Name suffix for the run"
     )

@@ -1,5 +1,5 @@
 MODEL:
-  SEGMENTOR_CKPT: 'ckpts/segmentation/cityscapes/GMM_seg_dinov2_b_fpn_1_4_8_11_bs2-bf16-mixed/epoch=258-val_iou=0.81.ckpt'
+  SEGMENTOR_CKPT: 'ckpts/segmentor.ckpt' # placeholder, should be overwritten
   BACKBONE:
     NAME: DINOv2
   OOD_HEAD:
@@ -10,9 +10,9 @@ MODEL:
     UPDATE_INTERVAL: 3
     GAMMA_MEAN: 0.999
     GAMMA_COV: 0
-    MEMORY_SIZE: 8000 # 32000
+    MEMORY_SIZE: 8000 
     SINKHORN_FACTORS: [1,1,1]
-    MAX_SAMPLE_SIZE: 20 # maximum number of samples in memory per component
+    MAX_SAMPLE_SIZE: 20 
     IGNORE_CLASS: 255
     DISTRIBUTED_TRAINING: True
   IGNORE_INDEX: 255
@@ -32,7 +32,7 @@ SOLVER:
     LR_END: 1.0e-7
     POWER: 1.0
     LAST_EPOCH: -1
-  BATCH_SIZE: 2
+  BATCH_SIZE: 2 # per GPU, should be scaled accordingly
   PRECISION: bf16-mixed
   MAX_STEPS: 4000
   LOG_EVERY_N_STEPS: 100
@@ -45,13 +45,13 @@ SOLVER:
 DATA:
   MODULE: SemanticSegmentation
   NAME: cityscapes_ood
-  DATASET_ROOT: '/scratch/users/nnayal21/hpc_run/datasets/cityscapes'
-  DATASETS_FOLDER: '/scratch/users/nnayal21/hpc_run/datasets/'
+  DATASET_ROOT: 'datasets/cityscapes'
+  DATASETS_FOLDER: 'datasets/'
   TARGET_TYPE: semantic_trainids
   EVAL_DATASET: road_anomaly
   OOD_LABEL: 254
   OOD_PROB: 0.2
-  COCO_ROOT: /scratch/users/nnayal21/hpc_run/datasets/coco
+  COCO_ROOT: datasets/coco
   COCO_PROXY_SIZE: 30000
 
 CKPT:
