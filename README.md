@@ -59,14 +59,14 @@ We provide two semantic segmentation models trained only on the 19 classes of ci
 <td align="center">GMM</td>
 <td align="center">82.57</td>
 <td align="center"><a href="configs/segmentation/cityscapes/gmm.yaml">config</a></td>
-<td align="center"><a href="">model</a></td>
+<td align="center"><a href="https://github.com/NazirNayal8/UEM-likelihood-ratio/releases/tag/model-weights">model</a></td>
 </tr>
 
 <tr><td align="left">dinov2_vitb14_reg</td>
 <td align="center">Linear</td>
 <td align="center">83.11</td>
 <td align="center"><a href="configs/segmentation/cityscapes/discriminative.yaml">config</a></td>
-<td align="center"><a href="">model</a></td>
+<td align="center"><a href="https://github.com/NazirNayal8/UEM-likelihood-ratio/releases/tag/model-weights">model</a></td>
 </tr>
 
 </tbody></table>
@@ -111,7 +111,7 @@ We provide two semantic segmentation models trained only on the 19 classes of ci
 <td align="center">6.04</td>
 
 <td align="center"><a href="configs/segmentation/ood/g_g.yaml">config</a></td>
-<td align="center"><a href="">model</a></td>
+<td align="center"><a href="https://github.com/NazirNayal8/UEM-likelihood-ratio/releases/tag/model-weights">model</a></td>
 </tr>
 
 <tr><td align="left">GMM</td>
@@ -130,7 +130,7 @@ We provide two semantic segmentation models trained only on the 19 classes of ci
 <td align="center">1.62</td>
 
 <td align="center"><a href="configs/segmentation/ood/g_d.yaml">config</a></td>
-<td align="center"><a href="">model</a></td>
+<td align="center"><a href="https://github.com/NazirNayal8/UEM-likelihood-ratio/releases/tag/model-weights">model</a></td>
 </tr>
 
 <tr><td align="left">Discriminative</td>
@@ -149,7 +149,7 @@ We provide two semantic segmentation models trained only on the 19 classes of ci
 <td align="center">2.60</td>
 
 <td align="center"><a href="configs/segmentation/ood/d_d.yaml">config</a></td>
-<td align="center"><a href="">model</a></td>
+<td align="center"><a href="https://github.com/NazirNayal8/UEM-likelihood-ratio/releases/tag/model-weights">model</a></td>
 </tr>
 
 </tbody></table>
