@@ -1,4 +1,4 @@
-# A Likelihood Ratio-Based Approach  to Segmenting Unknown Objects [IJCV 2025]
+# A Likelihood Ratio-Based Approach  to Segmenting Unknown Objects (IJCV 2025)
 
 [Nazir Nayal](https://nazirnayal.xyz/), [Youssef Shoeb](https://scholar.google.com/citations?user=1y9CiFUAAAAJ&hl=en), [Fatma Güney](https://mysite.ku.edu.tr/fguney/) 
 
