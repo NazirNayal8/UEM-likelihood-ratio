@@ -1,6 +1,6 @@
 # A Likelihood Ratio-Based Approach  to Segmenting Unknown Objects
 
-[Nazir Nayal](https://nazirnayal.xyz/), [Youssef Shoeb](https://scholar.google.com/citations?user=1y9CiFUAAAAJ&hl=en), [Fatma Güney](https://mysite.ku.edu.tr/fguney/)
+[Nazir Nayal](https://nazirnayal.xyz/), [Youssef Shoeb](https://scholar.google.com/citations?user=1y9CiFUAAAAJ&hl=en), [Fatma Güney](https://mysite.ku.edu.tr/fguney/) [IJCV 2025]
 
 [[`arXiv`](https://arxiv.org/abs/2409.06424)][[`BibTeX`](#CitingUEM)]
 
